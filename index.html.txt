@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>HTS Inventory Pro</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+body { font-family: Arial; padding:20px; background:#f2f2f2;}
+h1 { color:green; }
+input, select { width:100%; padding:8px; margin:5px 0; }
+button { padding:10px; margin:5px; background:blue; color:white; border:none; }
+table { width:100%; border-collapse:collapse; margin-top:20px; background:white;}
+th, td { border:1px solid #ccc; padding:8px; text-align:center;}
+</style>
+</head>
+
+<body>
+
+<h1>HTS Multi Location Inventory</h1>
+
+<!-- ADD PRODUCT -->
+<h3>Add Product</h3>
+<input type="text" id="name" placeholder="Product Name">
+<input type="number" id="price" placeholder="Price">
+<input type="number" id="qty" placeholder="Quantity">
+<input type="date" id="date">
+
+<select id="location">
+<option>Siliguri Shop</option>
+<option>Patna</option>
+<option>GHY</option>
+<option>Store Room</option>
+</select>
+
+<button onclick="addProduct()">Add Product</button>
+
+<!-- SELL -->
+<h3>Sell Product</h3>
+<input type="text" id="sellName" placeholder="Product Name">
+<input type="text" id="customer" placeholder="Customer Name">
+<input type="number" id="sellQty" placeholder="Sell Quantity">
+
+<select id="sellLocation">
+<option>Siliguri Shop</option>
+<option>Patna</option>
+<option>GHY</option>
+<option>Store Room</option>
+</select>
+
+<button onclick="sellProduct()">Sell</button>
+
+<!-- FILTER -->
+<h3>Filter</h3>
+<input type="text" id="filterName" placeholder="Product Name">
+<input type="date" id="filterDate">
+
+<select id="filterLocation">
+<option value="">All Location</option>
+<option>Siliguri Shop</option>
+<option>Patna</option>
+<option>GHY</option>
+<option>Store Room</option>
+</select>
+
+<button onclick="filterData()">Apply Filter</button>
+<button onclick="display()">Reset</button>
+
+<button onclick="downloadExcel()">Excel</button>
+<button onclick="downloadPDF()">PDF</button>
+
+<table id="table">
+<tr>
+<th>Product</th>
+<th>Price</th>
+<th>Stock</th>
+<th>Location</th>
+<th>Date</th>
+</tr>
+</table>
+
+<script>
+
+let data = JSON.parse(localStorage.getItem("inventory")) || [];
+
+// SAVE
+function save(){
+localStorage.setItem("inventory", JSON.stringify(data));
+}
+
+// ADD
+function addProduct(){
+let name = document.getElementById("name").value;
+let price = document.getElementById("price").value;
+let qty = parseInt(document.getElementById("qty").value);
+let location = document.getElementById("location").value;
+let date = document.getElementById("date").value;
+
+if(!name || !price || !qty || !date){
+alert("Fill all fields!");
+return;
+}
+
+data.push({name, price, qty, location, date});
+save();
+display();
+}
+
+// DISPLAY
+function display(list = data){
+let table = document.getElementById("table");
+table.innerHTML = `<tr>
+<th>Product</th><th>Price</th><th>Stock</th><th>Location</th><th>Date</th></tr>`;
+
+list.forEach(p=>{
+let row = table.insertRow();
+row.insertCell(0).innerHTML = p.name;
+row.insertCell(1).innerHTML = p.price;
+row.insertCell(2).innerHTML = p.qty;
+row.insertCell(3).innerHTML = p.location;
+row.insertCell(4).innerHTML = p.date;
+});
+}
+
+// SELL
+function sellProduct(){
+let name = document.getElementById("sellName").value;
+let qty = parseInt(document.getElementById("sellQty").value);
+let location = document.getElementById("sellLocation").value;
+let customer = document.getElementById("customer").value;
+
+let product = data.find(p=>p.name==name && p.location==location);
+
+if(!product){
+alert("Product not found!");
+return;
+}
+
+if(product.qty < qty){
+alert("Stock kam hai!");
+return;
+}
+
+product.qty -= qty;
+alert("Sold to " + customer);
+
+save();
+display();
+}
+
+// FILTER
+function filterData(){
+let name = document.getElementById("filterName").value;
+let location = document.getElementById("filterLocation").value;
+let date = document.getElementById("filterDate").value;
+
+let filtered = data.filter(p=>{
+return (!name || p.name.includes(name)) &&
+(!location || p.location==location) &&
+(!date || p.date==date);
+});
+
+display(filtered);
+}
+
+// EXCEL
+function downloadExcel(){
+let ws = XLSX.utils.json_to_sheet(data);
+let wb = XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(wb, ws, "Inventory");
+XLSX.writeFile(wb, "HTS_Inventory.xlsx");
+}
+
+// PDF
+async function downloadPDF(){
+const { jsPDF } = window.jspdf;
+const doc = new jsPDF();
+
+doc.text("HTS Inventory Report", 10, 10);
+
+let y=20;
+data.forEach((p,i)=>{
+doc.text(`${i+1}. ${p.name} | ${p.location} | ${p.qty}`,10,y);
+y+=10;
+});
+
+doc.save("HTS_Inventory.pdf");
+}
+
+// LOAD
+window.onload = display;
+
+</script>
+
+</body>
+</html>
